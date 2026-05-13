@@ -35,52 +35,9 @@ export function WelcomeHero({ onStart }: { onStart: () => void }) {
             Based on direct client reviews
           </p>
 
-          {/* Car crash icon — two cars colliding with spiky impact burst */}
+          {/* Car crash icon */}
           <div className="mb-4 flex justify-center">
-            <svg
-              className="h-16 w-24"
-              viewBox="0 0 160 90"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Left car — sedan profile facing right, dark navy */}
-              <g fill="#1e3a8a" stroke="#1e3a8a" strokeWidth="0.5">
-                {/* Body */}
-                <path d="M10 58 Q10 48, 18 48 L38 48 L44 35 Q46 31, 50 31 L60 31 Q63 31, 64 34 L68 48 L74 48 Q78 48, 78 52 L78 62 L10 62 Z" />
-                {/* Wheels */}
-                <circle cx="28" cy="64" r="6" fill="#1e3a8a" />
-                <circle cx="28" cy="64" r="2.5" fill="white" />
-                <circle cx="66" cy="64" r="6" fill="#1e3a8a" />
-                <circle cx="66" cy="64" r="2.5" fill="white" />
-                {/* Window */}
-                <path d="M46 36 L42 47 L62 47 L58 36 Z" fill="#4a7eff" opacity="0.5" />
-              </g>
-              {/* Left car motion lines */}
-              <line x1="2" y1="50" x2="10" y2="50" stroke="#1e3a8a" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="4" y1="56" x2="10" y2="56" stroke="#1e3a8a" strokeWidth="2.5" strokeLinecap="round" />
-
-              {/* Right car — sedan profile facing left, medium blue */}
-              <g fill="#2563EB" stroke="#2563EB" strokeWidth="0.5">
-                {/* Body */}
-                <path d="M150 58 Q150 48, 142 48 L122 48 L116 35 Q114 31, 110 31 L100 31 Q97 31, 96 34 L92 48 L86 48 Q82 48, 82 52 L82 62 L150 62 Z" />
-                {/* Wheels */}
-                <circle cx="132" cy="64" r="6" fill="#2563EB" />
-                <circle cx="132" cy="64" r="2.5" fill="white" />
-                <circle cx="94" cy="64" r="6" fill="#2563EB" />
-                <circle cx="94" cy="64" r="2.5" fill="white" />
-                {/* Window */}
-                <path d="M114 36 L118 47 L98 47 L102 36 Z" fill="#93bbff" opacity="0.5" />
-              </g>
-              {/* Right car motion lines */}
-              <line x1="158" y1="50" x2="150" y2="50" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="156" y1="56" x2="150" y2="56" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
-
-              {/* Impact burst — jagged star between the cars */}
-              <polygon
-                points="80,4 83,14 90,8 86,18 96,18 88,23 94,30 85,27 80,36 75,27 66,30 72,23 64,18 74,18 70,8 77,14"
-                fill="#2563EB"
-              />
-            </svg>
+            <img src="/assets/car-crash-icon.png" alt="Car accident" className="h-16 w-auto" />
           </div>
 
           {/* Headline */}

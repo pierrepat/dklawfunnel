@@ -63,12 +63,14 @@ function getTrustedFormCertUrl(): string {
 
 /** Maps quiz data → GHL inbound webhook payload. */
 function buildGhlPayload(answers: FunnelData) {
-  // Format incident date — ISO if custom date, otherwise the preset label.
+  // Calculate an actual ISO date from daysAgo so GHL date fields work.
   let incidentDate = "";
   if (answers.incident_year && answers.incident_month && answers.incident_day) {
     incidentDate = `${answers.incident_year}-${String(answers.incident_month).padStart(2, "0")}-${String(answers.incident_day).padStart(2, "0")}`;
-  } else if (answers.incident_date_label) {
-    incidentDate = answers.incident_date_label;
+  } else if (answers.incident_days_ago != null) {
+    const d = new Date();
+    d.setDate(d.getDate() - answers.incident_days_ago);
+    incidentDate = d.toISOString().split("T")[0];
   }
 
   const submittedAt = new Date().toISOString();

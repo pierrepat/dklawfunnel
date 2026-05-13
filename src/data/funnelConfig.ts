@@ -7,16 +7,24 @@ import type {
 
 const OTP_ENABLED = import.meta.env.VITE_ENABLE_OTP !== "false";
 
-/** Welcome-step options (reference quiz). */
-export const ACCIDENT_TYPE_OPTIONS: string[] = [
-  "Car Accident",
-  "18 Wheeler or other Commercial Vehicle Accident",
-  "Uber or Lyft Accident",
-  "Motorcycle Accident",
+/** Injury-type options (multi-select, mirrors M&M). */
+export const INJURY_TYPE_OPTIONS: string[] = [
+  "Neck, back, knee, or shoulder injury",
+  "Broken bones",
+  "Severe injury / death",
+  "Other",
+];
+
+/** How-did-it-happen options (mirrors M&M). */
+export const ACCIDENT_HOW_OPTIONS: string[] = [
+  "I was rear-ended",
+  "The other party failed to yield",
+  "The other party violated the rules of the road",
+  "Other",
 ];
 
 /**
- * Incident-date presets — split at 2 years per DK Law criteria (DOL > 2 years = Turn Down).
+ * Incident-date presets — split at 2 years per DK Law criteria.
  */
 export const INCIDENT_PRESETS: { label: string; daysAgo: number }[] = [
   { label: "Within the last week", daysAgo: 7 },
@@ -34,15 +42,20 @@ export const CASE_PLACEHOLDER =
   "Yesterday I was stopped at a red light when another driver rear ended me. I have some neck pain since. I saw a doctor the next day";
 
 /**
- * Progress index — 6 visible steps (welcome through phone_otp).
+ * Progress — quiz steps only (excludes welcome, good_news, checking, submitted).
+ * 6 quiz steps → percentage shown in progress bar.
  */
 const PROGRESS_BY_STEP: Record<FunnelStep, number> = {
   welcome: 0,
   injury: 1,
-  incident_date: 2,
-  at_fault: 3,
-  contact: 4,
-  phone_otp: 5,
+  at_fault: 2,
+  good_news: 2,
+  injury_type: 3,
+  accident_how: 4,
+  incident_date: 5,
+  contact: 6,
+  phone_otp: 6,
+  checking: 6,
   submitted: 6,
 };
 
@@ -53,18 +66,17 @@ export function dkLawQuizProgress(ctx: FunnelContext): { current: number; total:
 }
 
 const TITLES: Partial<Record<FunnelStep, string>> = {
-  welcome: "What type of accident were you in?",
-  injury: "Were you injured in the accident?",
-  incident_date: "When did the accident happen?",
-  at_fault: "Who caused the accident?",
-  contact: "Last step — let's get your free case review",
+  injury: "Were you injured?",
+  at_fault: "Who was at fault?",
+  injury_type: "Which of the following best describes your injuries?",
+  accident_how: "How did the accident happen?",
+  incident_date: "When did your accident happen?",
+  contact: "Personal details, please",
   phone_otp: "Verify your phone number",
 };
 
 const SUBTITLES: Partial<Record<FunnelStep, string>> = {
-  injury: "Any injury counts — even soreness or whiplash",
-  incident_date: "An estimate is fine",
-  at_fault: "This helps us evaluate your case faster",
+  injury_type: "Select all that apply",
   contact: "A legal specialist will call you — usually within 15 minutes",
   phone_otp: "We sent a 6-digit code to verify your number",
 };
@@ -80,9 +92,11 @@ export function getStepSubtitle(step: FunnelStep): string | undefined {
 export type PrequalifyBullet = { title: string; description: string };
 
 export const initialFunnelData: FunnelData = {
-  accident_type: "",
+  accident_type: "Car Accident",
   state: "California",
   injury_severity: "",
+  injury_types: [],
+  accident_how: "",
   first_name: "",
   last_name: "",
   first_name_cleaned: "",
@@ -117,17 +131,13 @@ export const initialDkLawContext: FunnelContext = {
 
 export function funnelReducer(state: FunnelContext, action: FunnelAction): FunnelContext {
   switch (action.type) {
+    case "START_QUIZ":
+      return { ...state, step: "injury" };
+
     case "PATCH_DATA":
       return {
         ...state,
         data: { ...state.data, ...action.patch },
-      };
-
-    case "SELECT_ACCIDENT":
-      return {
-        ...state,
-        data: { ...state.data, accident_type: action.accidentType },
-        step: "injury",
       };
 
     case "SELECT_INJURY": {
@@ -136,16 +146,52 @@ export function funnelReducer(state: FunnelContext, action: FunnelAction): Funne
           ...state,
           data: { ...state.data, injury_severity: "none" },
           flags: { ...state.flags, no_injury_dq: true },
-          step: "incident_date",
+          step: "at_fault",
         };
       }
       return {
         ...state,
         data: { ...state.data, injury_severity: "significant" },
         flags: { ...state.flags, no_injury_dq: false },
-        step: "incident_date",
+        step: "at_fault",
       };
     }
+
+    case "SELECT_AT_FAULT": {
+      const flags = { ...state.flags };
+      if (action.value === "Yes") flags.at_fault_dq = true;
+
+      return {
+        ...state,
+        data: { ...state.data, at_fault: action.value },
+        flags,
+        step: "good_news",
+      };
+    }
+
+    case "CONTINUE_GOOD_NEWS":
+      return { ...state, step: "injury_type" };
+
+    case "SELECT_INJURY_TYPES":
+      return {
+        ...state,
+        data: { ...state.data, injury_types: action.types },
+        step: "accident_how",
+      };
+
+    case "SELECT_ACCIDENT_HOW":
+      return {
+        ...state,
+        data: { ...state.data, accident_how: action.value },
+        step: "incident_date",
+      };
+
+    case "SELECT_ACCIDENT":
+      return {
+        ...state,
+        data: { ...state.data, accident_type: action.accidentType },
+        step: "incident_date",
+      };
 
     case "SELECT_INCIDENT_PRESET": {
       const flags = { ...state.flags };
@@ -158,18 +204,6 @@ export function funnelReducer(state: FunnelContext, action: FunnelAction): Funne
           incident_days_ago: action.daysAgo,
           incident_date_label: action.label,
         },
-        flags,
-        step: "at_fault",
-      };
-    }
-
-    case "SELECT_AT_FAULT": {
-      const flags = { ...state.flags };
-      if (action.value === "Yes") flags.at_fault_dq = true;
-
-      return {
-        ...state,
-        data: { ...state.data, at_fault: action.value },
         flags,
         step: "contact",
       };
@@ -189,7 +223,7 @@ export function funnelReducer(state: FunnelContext, action: FunnelAction): Funne
       }
       return {
         ...state,
-        step: "submitted",
+        step: "checking",
         data: { ...state.data, ...dataPatch, otp_verified: false },
       };
     }
@@ -197,9 +231,12 @@ export function funnelReducer(state: FunnelContext, action: FunnelAction): Funne
     case "CONFIRM_OTP":
       return {
         ...state,
-        step: "submitted",
+        step: "checking",
         data: { ...state.data, otp_verified: true },
       };
+
+    case "FINISH_CHECKING":
+      return { ...state, step: "submitted" };
 
     case "BACK": {
       const { step } = state;
@@ -207,10 +244,16 @@ export function funnelReducer(state: FunnelContext, action: FunnelAction): Funne
         case "phone_otp":
           return { ...state, step: "contact" };
         case "contact":
-          return { ...state, step: "at_fault" };
-        case "at_fault":
           return { ...state, step: "incident_date" };
         case "incident_date":
+          return { ...state, step: "accident_how" };
+        case "accident_how":
+          return { ...state, step: "injury_type" };
+        case "injury_type":
+          return { ...state, step: "good_news" };
+        case "good_news":
+          return { ...state, step: "at_fault" };
+        case "at_fault":
           return { ...state, step: "injury" };
         case "injury":
           return { ...state, step: "welcome" };
@@ -218,6 +261,9 @@ export function funnelReducer(state: FunnelContext, action: FunnelAction): Funne
           return state;
       }
     }
+
+    case "RESET":
+      return { ...initialDkLawContext, data: { ...initialFunnelData } };
 
     default:
       return state;
@@ -229,10 +275,14 @@ export function listFunnelSteps(): FunnelStep[] {
   return [
     "welcome",
     "injury",
-    "incident_date",
     "at_fault",
+    "good_news",
+    "injury_type",
+    "accident_how",
+    "incident_date",
     "contact",
     "phone_otp",
+    "checking",
     "submitted",
   ];
 }

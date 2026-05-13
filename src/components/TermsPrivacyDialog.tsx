@@ -1,5 +1,8 @@
-import { cloneElement, isValidElement, useRef, type ReactElement, type ReactNode } from "react";
-import { PrivacyPolicyContent } from "./PrivacyPolicyContent";
+import { cloneElement, isValidElement, lazy, Suspense, useRef, type ReactElement, type ReactNode } from "react";
+
+const PrivacyPolicyContent = lazy(() =>
+  import("./PrivacyPolicyContent").then((m) => ({ default: m.PrivacyPolicyContent }))
+);
 
 type TermsPrivacyDialogProps = {
   children: ReactNode;
@@ -50,7 +53,9 @@ export function TermsPrivacyDialog({ children }: TermsPrivacyDialogProps) {
             </button>
           </div>
           <div className="mt-3 h-[69vh] overflow-y-auto overflow-x-hidden px-6 pb-6">
-            <PrivacyPolicyContent />
+            <Suspense fallback={<p className="text-sm text-muted-foreground">Loading...</p>}>
+              <PrivacyPolicyContent />
+            </Suspense>
           </div>
         </div>
       </dialog>

@@ -1,5 +1,3 @@
-import { ChevronRight } from "lucide-react";
-
 type NavigationButtonsProps = {
   onBack?: () => void;
   onNext?: () => void;
@@ -10,43 +8,41 @@ type NavigationButtonsProps = {
   consentGrantor?: boolean;
 };
 
-/** Reference `de` in `index-DGn1on1U.js` (default variant). */
+/**
+ * Navigation — mirrors M&M: yellow CTA button (rounded-full), Back text link.
+ */
 export function NavigationButtons({
   onBack,
   onNext,
   backLabel = "Back",
-  nextLabel = "Next",
+  nextLabel = "Continue",
   showBack = true,
   nextDisabled = false,
   consentGrantor = false,
 }: NavigationButtonsProps) {
   return (
-    <div className="mt-8 flex items-center justify-between gap-4">
-      {showBack && onBack ? (
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {backLabel}
-        </button>
-      ) : (
-        <div />
-      )}
+    <div className="mt-8 flex flex-col items-center gap-4">
       {onNext ? (
         <button
           type="button"
           disabled={nextDisabled}
           onClick={onNext}
-          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all duration-300 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-full px-8 py-3.5 text-base font-bold text-gray-900 shadow-sm transition-all duration-200 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ backgroundColor: "#FBBF24" }}
           {...(consentGrantor ? { "data-tf-element-role": "consent-grantor" } : {})}
         >
           {nextLabel}
-          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
         </button>
-      ) : (
-        <div />
-      )}
+      ) : null}
+      {showBack && onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm font-medium text-gray-400 transition-colors hover:text-gray-700"
+        >
+          {backLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -131,6 +131,13 @@ export function trackQuizStarted() {
     trackMetaEvent("ViewContent", { content_name: "quiz_start", content_category: "mva_funnel" });
 }
 
+export function trackStepViewed(stepName: string) {
+    trackEvent("quiz_step_viewed", {
+        step: stepName,
+        funnel: "dklaw_mva",
+    });
+}
+
 export function trackStepCompleted(stepName: string) {
     trackEvent("quiz_step_completed", {
         step: stepName,

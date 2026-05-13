@@ -1,11 +1,15 @@
-/** Quiz step keys for the DK Law funnel — optimized for conversion. */
+/** Quiz step keys — mirrors Morgan & Morgan flow with DK Law OTP. */
 export type FunnelStep =
   | "welcome"
   | "injury"
-  | "incident_date"
   | "at_fault"
+  | "good_news"
+  | "injury_type"
+  | "accident_how"
+  | "incident_date"
   | "contact"
   | "phone_otp"
+  | "checking"
   | "submitted";
 
 export type InjurySeverity = "none" | "minor" | "significant" | "severe";
@@ -21,6 +25,8 @@ export type FunnelData = {
   accident_type: string;
   state: string;
   injury_severity: InjurySeverity | "";
+  injury_types: string[];
+  accident_how: string;
   first_name: string;
   last_name: string;
   first_name_cleaned: string;
@@ -41,13 +47,9 @@ export type FunnelData = {
   phone_e164: string;
   phone: string;
   phone_otp: string;
-  /** Captured server-side when OTP is sent. */
   ip_address: string;
-  /** Set true after Twilio Verify approves the code. */
   otp_verified: boolean;
-  /** TCPA consent timestamp (ISO) — captured at phone submit. */
   consent_timestamp: string;
-  /** TCPA consent text the user agreed to. */
   consent_text: string;
 };
 
@@ -64,11 +66,17 @@ export type FunnelContext = {
 };
 
 export type FunnelAction =
+  | { type: "START_QUIZ" }
   | { type: "PATCH_DATA"; patch: Partial<FunnelData> }
   | { type: "SELECT_ACCIDENT"; accidentType: string }
   | { type: "SELECT_INJURY"; injured: boolean }
+  | { type: "SELECT_INJURY_TYPES"; types: string[] }
+  | { type: "SELECT_ACCIDENT_HOW"; value: string }
   | { type: "SELECT_INCIDENT_PRESET"; daysAgo: number; label: string }
   | { type: "SELECT_AT_FAULT"; value: AtFaultValue }
+  | { type: "CONTINUE_GOOD_NEWS" }
   | { type: "CONFIRM_CONTACT"; ipAddress?: string }
   | { type: "CONFIRM_OTP" }
-  | { type: "BACK" };
+  | { type: "FINISH_CHECKING" }
+  | { type: "BACK" }
+  | { type: "RESET" };

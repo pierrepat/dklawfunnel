@@ -1,14 +1,26 @@
-import { Bike, Car, Check, Lock, ShieldCheck, Smartphone, Truck } from "lucide-react";
+import {
+  ArrowLeft,
+  Ban,
+  Check,
+  HelpCircle,
+  Mail,
+  Phone,
+  Star,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { useEffect, useMemo, useReducer, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import {
-  ACCIDENT_TYPE_OPTIONS,
+  ACCIDENT_HOW_OPTIONS,
   INCIDENT_PRESETS,
+  INJURY_TYPE_OPTIONS,
   dkLawQuizProgress,
   funnelReducer,
   getStepSubtitle,
   getStepTitle,
   initialDkLawContext,
 } from "../data/funnelConfig";
+import { assets } from "../data/assets";
 import type { FunnelAction, FunnelContext } from "../types/funnel";
 import {
   cleanName,
@@ -24,6 +36,7 @@ import { submitLead } from "../lib/submitLead";
 import {
   captureUTMs,
   trackQuizStarted,
+  trackStepViewed,
   trackStepCompleted,
   trackPhoneSubmitted,
   trackOTPSent,
@@ -37,13 +50,6 @@ import { WelcomeHero } from "./HeroIntro";
 import { NavigationButtons } from "./NavigationButtons";
 import { OptionButton } from "./OptionButton";
 import { ProgressBar } from "./ProgressBar";
-
-const ACCIDENT_TYPE_ICONS = [
-  { label: ACCIDENT_TYPE_OPTIONS[0], Icon: Car },
-  { label: ACCIDENT_TYPE_OPTIONS[1], Icon: Truck },
-  { label: ACCIDENT_TYPE_OPTIONS[2], Icon: Smartphone },
-  { label: ACCIDENT_TYPE_OPTIONS[3], Icon: Bike },
-] as const;
 
 type FieldErrors = Record<string, string>;
 
@@ -59,53 +65,240 @@ type InnerProps = {
   onSendOtp: () => Promise<void>;
   onVerifyOtp: () => Promise<void>;
   onResendOtp: () => Promise<void>;
+  selectedInjuryTypes: string[];
+  setSelectedInjuryTypes: Dispatch<SetStateAction<string[]>>;
 };
+
+/* ── SVG icons for injury types (M&M style blue line-art) ── */
+function InjuryIcon({ type }: { type: string }) {
+  const cls = "h-7 w-7 text-blue-600";
+  switch (type) {
+    case "Neck, back, knee, or shoulder injury":
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="5" r="3" />
+          <path d="M12 8v4" />
+          <path d="M9 12c-1 2-1 4 0 6" />
+          <path d="M15 12c1 2 1 4 0 6" />
+          <path d="M8 20h8" />
+        </svg>
+      );
+    case "Broken bones":
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 5l4 4" />
+          <path d="M15 15l4 4" />
+          <path d="M9 9l2 2" />
+          <path d="M13 13l-2-2" />
+          <path d="M5 5c-1-1-2 0-2 1s1 2 2 1" />
+          <path d="M19 19c1 1 2 0 2-1s-1-2-2-1" />
+          <path d="M11 11l-3 3" />
+        </svg>
+      );
+    case "Severe injury / death":
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2a7 7 0 0 1 7 7c0 3-2 5.5-4 7l-3 4-3-4c-2-1.5-4-4-4-7a7 7 0 0 1 7-7z" />
+          <path d="M12 9v2" />
+          <circle cx="12" cy="13" r="0.5" fill="currentColor" />
+        </svg>
+      );
+    default: // "Other"
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 3h6l3 6-3 6H9l-3-6z" />
+          <path d="M12 8v3" />
+          <circle cx="12" cy="14" r="0.5" fill="currentColor" />
+        </svg>
+      );
+  }
+}
+
+/* ── SVG icons for accident_how (M&M style - different crash types) ── */
+function AccidentHowIcon({ option }: { option: string }) {
+  const cls = "h-7 w-7 text-blue-600";
+  switch (option) {
+    case "I was rear-ended":
+      return (
+        <svg className={cls} viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="14" width="12" height="8" rx="1.5" />
+          <rect x="18" y="14" width="12" height="8" rx="1.5" />
+          <circle cx="6" cy="25" r="2" />
+          <circle cx="10" cy="25" r="2" />
+          <circle cx="22" cy="25" r="2" />
+          <circle cx="26" cy="25" r="2" />
+          <path d="M14 18h4" strokeWidth="2" />
+          <path d="M16 10l-2-3" />
+          <path d="M16 10l2-3" />
+          <path d="M16 10v4" />
+        </svg>
+      );
+    case "The other party failed to yield":
+      return (
+        <svg className={cls} viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="14" width="12" height="8" rx="1.5" />
+          <rect x="14" y="6" width="8" height="12" rx="1.5" transform="rotate(45 18 12)" />
+          <circle cx="6" cy="25" r="2" />
+          <circle cx="10" cy="25" r="2" />
+          <path d="M14 16l4-4" />
+          <path d="M16 8l-2-2" />
+          <path d="M16 8l2-2" />
+        </svg>
+      );
+    case "The other party violated the rules of the road":
+      return (
+        <svg className={cls} viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="14" width="12" height="8" rx="1.5" />
+          <rect x="18" y="14" width="12" height="8" rx="1.5" />
+          <circle cx="6" cy="25" r="2" />
+          <circle cx="10" cy="25" r="2" />
+          <circle cx="22" cy="25" r="2" />
+          <circle cx="26" cy="25" r="2" />
+          <circle cx="16" cy="8" r="4" />
+          <line x1="16" y1="6" x2="16" y2="10" strokeWidth="2" />
+          <circle cx="16" cy="11.5" r="0.5" fill="currentColor" />
+        </svg>
+      );
+    default: // "Other"
+      return (
+        <svg className={cls} viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="6" y="14" width="20" height="8" rx="1.5" />
+          <circle cx="10" cy="25" r="2" />
+          <circle cx="22" cy="25" r="2" />
+          <path d="M12 10l4-4 4 4" />
+        </svg>
+      );
+  }
+}
 
 function renderQuizFields(p: InnerProps) {
   const {
-    ctx, dispatch, fieldErrors, setFieldErrors, goBack,
+    ctx, dispatch, fieldErrors, setFieldErrors,
     otpSending, otpVerifying, otpServerError, onSendOtp, onVerifyOtp, onResendOtp,
+    selectedInjuryTypes, setSelectedInjuryTypes,
   } = p;
 
   switch (ctx.step) {
-    case "welcome":
-      return (
-        <>
-          {ACCIDENT_TYPE_ICONS.map(({ label, Icon }) => (
-            <OptionButton
-              key={label}
-              label={label}
-              icon={<Icon size={22} className="shrink-0" />}
-              highlightSelected={false}
-              onClick={() => {
-                trackStepCompleted("welcome");
-                dispatch({ type: "SELECT_ACCIDENT", accidentType: label });
-              }}
-            />
-          ))}
-        </>
-      );
-
     case "injury":
       return (
         <>
           <OptionButton
-            label="Yes, I was injured"
-            highlightSelected={false}
+            label="Yes"
+            icon={<UserRound size={22} />}
             onClick={() => {
               trackStepCompleted("injury");
               dispatch({ type: "SELECT_INJURY", injured: true });
             }}
           />
           <OptionButton
-            label="No injuries"
-            highlightSelected={false}
+            label="No"
+            icon={<Ban size={22} />}
             onClick={() => {
               trackStepCompleted("injury");
               dispatch({ type: "SELECT_INJURY", injured: false });
             }}
           />
-          <NavigationButtons showBack onBack={goBack} />
+        </>
+      );
+
+    case "at_fault":
+      return (
+        <>
+          <OptionButton
+            label="Them"
+            icon={<Users size={22} />}
+            onClick={() => {
+              trackStepCompleted("at_fault");
+              dispatch({ type: "SELECT_AT_FAULT", value: "No" });
+            }}
+          />
+          <OptionButton
+            label="Me"
+            icon={<UserRound size={22} />}
+            onClick={() => {
+              trackStepCompleted("at_fault");
+              dispatch({ type: "SELECT_AT_FAULT", value: "Yes" });
+            }}
+          />
+          <OptionButton
+            label="I don't know"
+            icon={<HelpCircle size={22} />}
+            onClick={() => {
+              trackStepCompleted("at_fault");
+              dispatch({ type: "SELECT_AT_FAULT", value: "Not sure" });
+            }}
+          />
+        </>
+      );
+
+    case "injury_type": {
+      const toggleType = (t: string) => {
+        setSelectedInjuryTypes((prev) =>
+          prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+        );
+      };
+
+      return (
+        <>
+          {INJURY_TYPE_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggleType(opt)}
+              className={[
+                "flex w-full items-center justify-between rounded-xl border-2 p-4 text-left transition-all duration-200",
+                "hover:border-blue-400 hover:bg-blue-50/50",
+                selectedInjuryTypes.includes(opt)
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 bg-white",
+              ].join(" ")}
+            >
+              <div className="flex items-center gap-3">
+                <InjuryIcon type={opt} />
+                <span className="text-base font-semibold text-gray-900">{opt}</span>
+              </div>
+              <div
+                className={[
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
+                  selectedInjuryTypes.includes(opt)
+                    ? "border-blue-500 bg-blue-500"
+                    : "border-gray-300",
+                ].join(" ")}
+              >
+                {selectedInjuryTypes.includes(opt) ? (
+                  <Check className="h-3 w-3 text-white" />
+                ) : null}
+              </div>
+            </button>
+          ))}
+          <NavigationButtons
+            showBack={false}
+            onNext={() => {
+              if (selectedInjuryTypes.length === 0) return;
+              trackStepCompleted("injury_type");
+              dispatch({ type: "SELECT_INJURY_TYPES", types: selectedInjuryTypes });
+            }}
+            nextLabel="Continue"
+            nextDisabled={selectedInjuryTypes.length === 0}
+          />
+        </>
+      );
+    }
+
+    case "accident_how":
+      return (
+        <>
+          {ACCIDENT_HOW_OPTIONS.map((opt) => (
+            <OptionButton
+              key={opt}
+              label={opt}
+              icon={<AccidentHowIcon option={opt} />}
+              onClick={() => {
+                trackStepCompleted("accident_how");
+                dispatch({ type: "SELECT_ACCIDENT_HOW", value: opt });
+              }}
+            />
+          ))}
         </>
       );
 
@@ -116,53 +309,13 @@ function renderQuizFields(p: InnerProps) {
             <OptionButton
               key={preset.label}
               label={preset.label}
-              highlightSelected={false}
+              showArrow={false}
               onClick={() => {
                 trackStepCompleted("incident_date");
                 dispatch({ type: "SELECT_INCIDENT_PRESET", daysAgo: preset.daysAgo, label: preset.label });
               }}
             />
           ))}
-          <NavigationButtons showBack onBack={goBack} />
-        </>
-      );
-
-    case "at_fault":
-      return (
-        <>
-          <OptionButton
-            label="The other driver hit me"
-            highlightSelected={false}
-            onClick={() => {
-              trackStepCompleted("at_fault");
-              dispatch({ type: "SELECT_AT_FAULT", value: "No" });
-            }}
-          />
-          <OptionButton
-            label="I was a passenger"
-            highlightSelected={false}
-            onClick={() => {
-              trackStepCompleted("at_fault");
-              dispatch({ type: "SELECT_AT_FAULT", value: "Yes_Passenger" });
-            }}
-          />
-          <OptionButton
-            label="It was my fault"
-            highlightSelected={false}
-            onClick={() => {
-              trackStepCompleted("at_fault");
-              dispatch({ type: "SELECT_AT_FAULT", value: "Yes" });
-            }}
-          />
-          <OptionButton
-            label="I'm not sure"
-            highlightSelected={false}
-            onClick={() => {
-              trackStepCompleted("at_fault");
-              dispatch({ type: "SELECT_AT_FAULT", value: "Not sure" });
-            }}
-          />
-          <NavigationButtons showBack onBack={goBack} />
         </>
       );
 
@@ -188,6 +341,7 @@ function renderQuizFields(p: InnerProps) {
           {/* Name */}
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">First Name</label>
               <input
                 type="text"
                 name="given-name"
@@ -195,16 +349,16 @@ function renderQuizFields(p: InnerProps) {
                 value={ctx.data.first_name}
                 onChange={(e) => dispatch({ type: "PATCH_DATA", patch: { first_name: e.target.value } })}
                 maxLength={100}
-                placeholder="First name"
-                className="w-full rounded-lg border-2 border-border bg-card p-4 text-foreground transition-colors focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border-2 border-gray-200 bg-white p-3.5 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none"
               />
               {(fieldErrors.first_name || firstNameError || namesDistinctError) ? (
-                <p className="mt-1 text-sm text-destructive">
+                <p className="mt-1 text-sm text-red-500">
                   {fieldErrors.first_name ?? firstNameError ?? namesDistinctError}
                 </p>
               ) : null}
             </div>
             <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Last Name</label>
               <input
                 type="text"
                 name="family-name"
@@ -212,73 +366,82 @@ function renderQuizFields(p: InnerProps) {
                 value={ctx.data.last_name}
                 onChange={(e) => dispatch({ type: "PATCH_DATA", patch: { last_name: e.target.value } })}
                 maxLength={100}
-                placeholder="Last name"
-                className="w-full rounded-lg border-2 border-border bg-card p-4 text-foreground transition-colors focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border-2 border-gray-200 bg-white p-3.5 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none"
               />
               {(fieldErrors.last_name || lastNameError) ? (
-                <p className="mt-1 text-sm text-destructive">{fieldErrors.last_name ?? lastNameError}</p>
+                <p className="mt-1 text-sm text-red-500">{fieldErrors.last_name ?? lastNameError}</p>
               ) : null}
             </div>
           </div>
 
           {/* Phone */}
-          <input
-            type="tel"
-            inputMode="numeric"
-            name="tel"
-            autoComplete="tel"
-            value={phoneInputValue}
-            onChange={(e) => {
-              const raw = e.target.value;
-              const normalized10 = normalizeUsPhoneToTenDigits(raw);
-              dispatch({
-                type: "PATCH_DATA",
-                patch: {
-                  phone_raw: raw,
-                  phone: normalized10,
-                  phone_normalized_10_digits: normalized10,
-                  phone_e164: normalized10 ? `+1${normalized10}` : "",
-                },
-              });
-            }}
-            maxLength={18}
-            placeholder="(415) 123-4567"
-            className="w-full rounded-lg border-2 border-border bg-card p-4 text-foreground tabular-nums transition-colors focus:border-primary focus:outline-none"
-          />
-          {phoneTouched && (fieldErrors.phone || phoneError) ? (
-            <p className="text-sm text-destructive">{fieldErrors.phone ?? phoneError}</p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">
-            So our legal team can reach you about your case — usually within 15 minutes.
-          </p>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Phone Number</label>
+            <div className="relative">
+              <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="tel"
+                inputMode="numeric"
+                name="tel"
+                autoComplete="tel"
+                value={phoneInputValue}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const normalized10 = normalizeUsPhoneToTenDigits(raw);
+                  dispatch({
+                    type: "PATCH_DATA",
+                    patch: {
+                      phone_raw: raw,
+                      phone: normalized10,
+                      phone_normalized_10_digits: normalized10,
+                      phone_e164: normalized10 ? `+1${normalized10}` : "",
+                    },
+                  });
+                }}
+                maxLength={18}
+                placeholder="(415) 123-4567"
+                className="w-full rounded-lg border-2 border-gray-200 bg-white p-3.5 pl-10 text-gray-900 tabular-nums transition-colors focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            {phoneTouched && (fieldErrors.phone || phoneError) ? (
+              <p className="mt-1 text-sm text-red-500">{fieldErrors.phone ?? phoneError}</p>
+            ) : null}
+          </div>
 
-          {/* Email (optional) */}
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            value={ctx.data.email}
-            onChange={(e) => dispatch({ type: "PATCH_DATA", patch: { email: e.target.value } })}
-            maxLength={255}
-            placeholder="Email (optional)"
-            className="w-full rounded-lg border-2 border-border bg-card p-4 text-foreground transition-colors focus:border-primary focus:outline-none"
-          />
-          {fieldErrors.email ? <p className="text-sm text-destructive">{fieldErrors.email}</p> : null}
+          {/* Email */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                value={ctx.data.email}
+                onChange={(e) => dispatch({ type: "PATCH_DATA", patch: { email: e.target.value } })}
+                maxLength={255}
+                placeholder="Optional"
+                className="w-full rounded-lg border-2 border-gray-200 bg-white p-3.5 pl-10 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            {fieldErrors.email ? <p className="mt-1 text-sm text-red-500">{fieldErrors.email}</p> : null}
+          </div>
 
           {otpServerError ? (
-            <p className="text-sm text-destructive">{otpServerError}</p>
+            <p className="text-sm text-red-500">{otpServerError}</p>
           ) : null}
 
           {/* TCPA consent */}
-          <p className="text-xs text-muted-foreground" data-tf-element-role="consent-description">
-            By clicking &apos;See If I Qualify&apos;, you agree to our Privacy Policy and consent to receive calls and text messages
-            from DK Law and its partners at the phone number provided, including via automated technology, regarding your
-            potential claim. Consent is not a condition of any purchase. Message and data rates may apply.
+          <p className="text-xs leading-relaxed text-gray-400" data-tf-element-role="consent-description">
+            By submitting my phone number above I authorize DK Law, and its service providers, to deliver calls including using an
+            automatic telephone dialing system or artificial or prerecorded voice,
+            to the number submitted. Consent is not a condition to receive
+            services. Msg frequency varies. Msg & data rates may apply. Upon
+            receipt of any message, reply STOP to unsubscribe.
           </p>
 
           <NavigationButtons
-            showBack
-            onBack={goBack}
+            showBack={false}
             onNext={async () => {
               const errors: FieldErrors = {};
               const e1 = validateName(ctx.data.first_name, "first name");
@@ -324,22 +487,18 @@ function renderQuizFields(p: InnerProps) {
               trackPhoneSubmitted(`+1${normalized10}`);
               await onSendOtp();
             }}
-            nextLabel={otpSending ? "Sending..." : "See If I Qualify"}
+            nextLabel={otpSending ? "Sending..." : "Continue"}
             nextDisabled={!allValid || otpSending}
             consentGrantor
           />
 
-          {/* Trust signals */}
-          <div className="flex items-center justify-center gap-5 pt-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Lock size={12} className="text-primary" aria-hidden />
-              Encrypted
-            </span>
-            <span className="flex items-center gap-1">
-              <ShieldCheck size={12} className="text-primary" aria-hidden />
-              No spam, ever
-            </span>
-          </div>
+          {/* Bottom consent link — M&M style */}
+          <p className="text-center text-xs text-gray-400">
+            By submitting this form, you agree to our{" "}
+            <a href="#terms" className="text-blue-500 hover:underline">Terms</a>
+            {" & acknowledge our "}
+            <a href="#privacy" className="text-blue-500 hover:underline">Privacy Policy</a>.
+          </p>
         </>
       );
     }
@@ -348,7 +507,7 @@ function renderQuizFields(p: InnerProps) {
       const masked = formatPhoneMask(ctx.data.phone);
       return (
         <>
-          <p className="mb-4 text-sm text-muted-foreground">
+          <p className="mb-4 text-center text-sm text-gray-500">
             We sent a 6-digit code to {masked}. It may take 30-60 seconds to arrive.
           </p>
           <input
@@ -364,25 +523,24 @@ function renderQuizFields(p: InnerProps) {
             }
             maxLength={6}
             placeholder="000000"
-            className="w-full rounded-lg border-2 border-border bg-card p-4 text-center text-xl tabular-nums tracking-widest text-foreground transition-colors focus:border-primary focus:outline-none"
+            className="w-full rounded-lg border-2 border-gray-200 bg-white p-4 text-center text-xl tabular-nums tracking-widest text-gray-900 transition-colors focus:border-blue-500 focus:outline-none"
           />
           {fieldErrors.phone_otp ? (
-            <p className="mt-2 text-sm text-destructive">{fieldErrors.phone_otp}</p>
+            <p className="mt-2 text-sm text-red-500">{fieldErrors.phone_otp}</p>
           ) : null}
           {otpServerError ? (
-            <p className="mt-2 text-sm text-destructive">{otpServerError}</p>
+            <p className="mt-2 text-sm text-red-500">{otpServerError}</p>
           ) : null}
           <button
             type="button"
             disabled={otpSending}
-            className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-50"
+            className="mt-4 text-sm font-medium text-blue-500 underline-offset-4 hover:underline disabled:opacity-50"
             onClick={onResendOtp}
           >
             {otpSending ? "Resending..." : "Resend code"}
           </button>
           <NavigationButtons
-            showBack
-            onBack={goBack}
+            showBack={false}
             onNext={async () => {
               const err = validateOtpSix(ctx.data.phone_otp);
               if (err) {
@@ -411,11 +569,46 @@ export function Funnel() {
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpServerError, setOtpServerError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [selectedInjuryTypes, setSelectedInjuryTypes] = useState<string[]>([]);
 
   useEffect(() => {
     captureUTMs();
     trackQuizStarted();
   }, []);
+
+  useEffect(() => {
+    trackStepViewed(ctx.step);
+  }, [ctx.step]);
+
+  // "Checking" screen — submit lead, then transition to submitted
+  useEffect(() => {
+    if (ctx.step !== "checking") return;
+    let cancelled = false;
+
+    const run = async () => {
+      setSubmitState("submitting");
+      try {
+        await submitLead({ answers: { ...ctx.data } });
+        trackLeadSubmitted({
+          email: ctx.data.email,
+          state: ctx.data.state,
+          injurySeverity: ctx.data.injury_severity,
+          represented: ctx.data.represented,
+        });
+        if (!cancelled) setSubmitState("success");
+      } catch (err) {
+        console.error("submitLead error:", err);
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        trackLeadSubmissionFailed(errorMsg);
+        if (!cancelled) setSubmitState("error");
+      }
+      await new Promise((r) => setTimeout(r, 3000));
+      if (!cancelled) dispatch({ type: "FINISH_CHECKING" });
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [ctx.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const progress = useMemo(() => dkLawQuizProgress(ctx), [ctx]);
 
@@ -423,6 +616,13 @@ export function Funnel() {
     setFieldErrors({});
     setOtpServerError(null);
     dispatch({ type: "BACK" });
+  };
+
+  const resetToStart = () => {
+    setFieldErrors({});
+    setOtpServerError(null);
+    setSelectedInjuryTypes([]);
+    dispatch({ type: "RESET" });
   };
 
   const sendOtp = async () => {
@@ -495,24 +695,6 @@ export function Funnel() {
 
       trackOTPVerified();
       dispatch({ type: "CONFIRM_OTP" });
-      setSubmitState("submitting");
-      try {
-        await submitLead({
-          answers: { ...ctx.data, otp_verified: true },
-        });
-        trackLeadSubmitted({
-          email: ctx.data.email,
-          state: ctx.data.state,
-          injurySeverity: ctx.data.injury_severity,
-          represented: ctx.data.represented,
-        });
-        setSubmitState("success");
-      } catch (err) {
-        console.error("submitLead error:", err);
-        const errorMsg = err instanceof Error ? err.message : "Unknown error";
-        trackLeadSubmissionFailed(errorMsg);
-        setSubmitState("error");
-      }
     } catch (err) {
       console.error("verifyOtp error:", err);
       setOtpServerError("Network error. Please try again.");
@@ -533,44 +715,117 @@ export function Funnel() {
     onSendOtp: sendOtp,
     onVerifyOtp: verifyOtp,
     onResendOtp: resendOtp,
+    selectedInjuryTypes,
+    setSelectedInjuryTypes,
   };
 
-  const showProgress = ctx.step !== "welcome" && ctx.step !== "submitted";
+  const showProgress =
+    ctx.step !== "welcome" &&
+    ctx.step !== "good_news" &&
+    ctx.step !== "checking" &&
+    ctx.step !== "submitted";
 
   const title = getStepTitle(ctx.step);
   const subtitle = getStepSubtitle(ctx.step);
 
   let main: ReactNode;
 
-  if (ctx.step === "submitted") {
+  if (ctx.step === "welcome") {
+    main = (
+      <WelcomeHero
+        onStart={() => {
+          trackStepCompleted("welcome");
+          dispatch({ type: "START_QUIZ" });
+        }}
+      />
+    );
+  } else if (ctx.step === "good_news") {
+    /* ── "Good news" interstitial — M&M style: full-bleed photo bg, white card, yellow CTA ── */
+    main = (
+      <div
+        className="relative flex min-h-[calc(100vh-56px)] flex-col items-center justify-center bg-gray-900 bg-cover bg-center px-4 py-12"
+        style={{ backgroundImage: `url(${assets.heroCrashBg})` }}
+      >
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="relative z-10 w-full max-w-md rounded-2xl bg-white px-6 py-8 text-center shadow-2xl md:px-10 md:py-10">
+          {/* Handshake icon */}
+          <div className="mb-4 flex justify-center">
+            <svg className="h-14 w-14" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M16 28c4-4 8-6 14-6s10 4 14 6" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M20 34l6 6 4-4 6 6" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 22l8 6" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M52 22l-8 6" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+          </div>
+
+          <h2 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">
+            Good news — You may have a case!
+          </h2>
+          <p className="mx-auto mb-6 max-w-sm text-sm text-gray-500">
+            Let&apos;s grab a few quick details so you can finish your sign-up and, if eligible, connect with a lawyer sooner.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              trackStepCompleted("good_news");
+              dispatch({ type: "CONTINUE_GOOD_NEWS" });
+            }}
+            className="w-full rounded-full px-10 py-3.5 text-base font-bold text-gray-900 shadow-lg transition-all duration-200 hover:brightness-105 active:scale-[0.98]"
+            style={{ backgroundColor: "#FBBF24" }}
+          >
+            Continue
+          </button>
+        </div>
+
+        {/* Testimonial below card — M&M style: stars + quote */}
+        <div className="relative z-10 mt-6 w-full max-w-md text-center">
+          <div className="mb-2 flex items-center justify-center gap-1">
+            {Array.from({ length: 5 }, (_, n) => (
+              <Star key={n} className="h-5 w-5" style={{ fill: "#FBBF24", color: "#FBBF24" }} />
+            ))}
+          </div>
+          <p className="text-lg font-bold leading-snug text-white">
+            &ldquo;The company handled absolutely everything from start to finish.&rdquo;
+          </p>
+        </div>
+      </div>
+    );
+  } else if (ctx.step === "checking") {
+    main = (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 py-16">
+        <div className="mb-6 flex justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500" />
+        </div>
+        <h2 className="mb-2 text-center text-2xl font-bold tracking-tight text-gray-900">
+          We&apos;re checking your case details now.
+        </h2>
+        <p className="text-center text-gray-500">
+          This may take a minute, so please don&apos;t refresh the page.
+        </p>
+      </div>
+    );
+  } else if (ctx.step === "submitted") {
     const fn = ctx.data.first_name.trim();
     const phoneMask = formatPhoneMask(ctx.data.phone);
     main = (
-      <div className="mx-auto w-full max-w-xl rounded-xl border border-border bg-card p-8 text-center shadow-card">
+      <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 py-16">
         <div className="mb-5 flex justify-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <Check className="h-7 w-7 text-primary" aria-hidden />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+            <Check className="h-7 w-7 text-green-600" aria-hidden />
           </div>
         </div>
-        <h2 className="mb-2 text-[2rem] font-bold leading-tight tracking-tight text-foreground">
+        <h2 className="mb-2 text-center text-[2rem] font-bold leading-tight tracking-tight text-gray-900">
           {fn ? `${fn}, you may qualify!` : "You may qualify!"}
         </h2>
-        <p className="mx-auto max-w-lg text-muted-foreground">
+        <p className="mx-auto max-w-lg text-center text-gray-500">
           A DK Law specialist is reviewing your case now. Expect a call at {phoneMask} within the next 15 minutes.
         </p>
         {submitState === "error" ? (
-          <p className="mt-4 text-xs text-destructive">
-            (We had trouble saving your submission — please call (714) 294-2224 if you don&apos;t hear from us in 24 hours.)
+          <p className="mt-4 text-center text-xs text-red-500">
+            (We had trouble saving your submission — please call (800) 719-9779 if you don&apos;t hear from us in 24 hours.)
           </p>
         ) : null}
       </div>
-    );
-  } else if (ctx.step === "welcome") {
-    main = (
-      <>
-        <WelcomeHero />
-        <FunnelCard title={title}>{renderQuizFields(innerProps)}</FunnelCard>
-      </>
     );
   } else {
     main = (
@@ -580,17 +835,46 @@ export function Funnel() {
     );
   }
 
+  // Back arrow for quiz steps (M&M places it above the progress bar)
+  const showBackArrow =
+    ctx.step !== "welcome" &&
+    ctx.step !== "good_news" &&
+    ctx.step !== "checking" &&
+    ctx.step !== "submitted";
+
+  // Welcome & good_news get their own full-bleed layout
+  if (ctx.step === "welcome" || ctx.step === "good_news") {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header onLogoClick={resetToStart} />
+        {main}
+        <input type="hidden" id="xxTrustedFormCertUrl" name="xxTrustedFormCertUrl" />
+      </div>
+    );
+  }
+
   return (
-    <>
-      <Header />
-      <div className="flex flex-col items-center justify-start px-4 py-8 md:py-16">
-        <div className="w-full max-w-xl">
+    <div className="min-h-screen bg-white">
+      <Header onLogoClick={resetToStart} />
+      <div className="flex flex-col items-center justify-start px-4 py-6 md:py-12">
+        <div className="w-full max-w-lg">
+          {showBackArrow ? (
+            <div className="mb-1 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goBack}
+                className="flex items-center gap-1 text-gray-400 transition-colors hover:text-gray-700"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
           {showProgress ? <ProgressBar current={progress.current} total={progress.total} /> : null}
           {main}
         </div>
       </div>
-      {/* TrustedForm hidden field — populated by trustedform.js */}
       <input type="hidden" id="xxTrustedFormCertUrl" name="xxTrustedFormCertUrl" />
-    </>
+    </div>
   );
 }

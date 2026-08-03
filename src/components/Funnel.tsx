@@ -432,12 +432,16 @@ function renderQuizFields(p: InnerProps) {
           ) : null}
 
           {/* TCPA consent */}
-          <p className="text-xs leading-relaxed text-gray-400" data-tf-element-role="consent-description">
-            By submitting my phone number above I authorize DK Law, and its service providers, to deliver calls including using an
-            automatic telephone dialing system or artificial or prerecorded voice,
-            to the number submitted. Consent is not a condition to receive
-            services. Msg frequency varies. Msg & data rates may apply. Upon
-            receipt of any message, reply STOP to unsubscribe.
+          <p className="text-xs leading-relaxed text-gray-600" data-tf-element-role="consent-description">
+            By submitting my phone number, I authorize GTM Partner LLC and its
+            service providers to contact me by phone call and text message (SMS),
+            including via automated technology, at the number provided. Consent is
+            not a condition of purchase or services. Message frequency varies.
+            Message &amp; data rates may apply. Reply STOP to unsubscribe, HELP for
+            help. See our{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Privacy Policy</a>
+            {" and "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Terms of Service</a>.
           </p>
 
           <NavigationButtons
@@ -495,9 +499,9 @@ function renderQuizFields(p: InnerProps) {
           {/* Bottom consent link — M&M style */}
           <p className="text-center text-xs text-gray-400">
             By submitting this form, you agree to our{" "}
-            <a href="#terms" className="text-blue-500 hover:underline">Terms</a>
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Terms</a>
             {" & acknowledge our "}
-            <a href="#privacy" className="text-blue-500 hover:underline">Privacy Policy</a>.
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Privacy Policy</a>.
           </p>
         </>
       );

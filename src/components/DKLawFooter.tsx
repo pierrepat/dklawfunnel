@@ -37,8 +37,8 @@ export function DKLawFooter() {
           </p>
           <p className="mb-4 text-sm leading-relaxed text-gray-500">
             <span className="font-semibold text-gray-700">Disclaimer:</span> This site is not a substitute for professional legal
-            advice. If you submit your information, you may be contacted by DK Law or affiliated partners regarding your potential
-            claim. Legal representation is established only after a written agreement is signed between you and the attorney. We do
+            advice. If you submit your information, you may be contacted by GTM Partner LLC and participating law firms regarding your
+            potential claim. Legal representation is established only after a written agreement is signed between you and the attorney. We do
             not guarantee that you will receive compensation.
           </p>
           <p className="text-sm leading-relaxed text-gray-500">

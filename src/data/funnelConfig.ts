@@ -211,7 +211,7 @@ export function funnelReducer(state: FunnelContext, action: FunnelAction): Funne
 
     case "CONFIRM_CONTACT": {
       const consent_text =
-        "By clicking 'See If I Qualify', I agree to the Privacy Policy and consent to receive calls and text messages from DK Law and its partners at the phone number provided, including via automated technology, regarding my potential claim. Consent is not a condition of any purchase. Message and data rates may apply.";
+        "By submitting my phone number, I authorize GTM Partner LLC and its service providers to contact me by phone call and text message (SMS), including via automated technology, at the number provided. Consent is not a condition of purchase or services. Message frequency varies. Message & data rates may apply. Reply STOP to unsubscribe, HELP for help. See our Privacy Policy and Terms of Service.";
       const dataPatch = {
         phone_otp: "",
         ip_address: action.ipAddress ?? state.data.ip_address,

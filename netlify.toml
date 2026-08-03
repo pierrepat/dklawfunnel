@@ -6,6 +6,23 @@
 [functions]
   node_bundler = "esbuild"
 
+# Serve the SPA for the public legal pages so /privacy and /terms load directly
+# (real URLs for carrier/TCR review). App.tsx renders the right page by path.
+[[redirects]]
+  from = "/privacy"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/opt-in"
+  to = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
